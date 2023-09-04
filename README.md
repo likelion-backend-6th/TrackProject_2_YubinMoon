@@ -54,14 +54,15 @@
 
 ## DRF
 
-- [ ] 프로젝트 생성
-- [ ] 환경 분리
+- [x] 프로젝트 생성
+- [x] 환경 분리
 - [ ] 설정 변경
-- [ ] start script 작성
+- [x] start script 작성
+- [ ] entrypoint script 작성
 
 ## docker
 
-- [ ] dockerfile 작성
+- [x] dockerfile 작성
 - [ ] docker compose 구성
 
 ## terraform
