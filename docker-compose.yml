@@ -8,14 +8,14 @@ services:
     depends_on:
       - db
     env_file:
-      - ./.env
+      - ./.env.local
 
   db:
     image: postgres:13
     ports:
       - "5432:5432"
     env_file:
-      - ./.env
+      - ./.env.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
