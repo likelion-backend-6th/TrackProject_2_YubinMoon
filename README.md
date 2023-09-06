@@ -46,6 +46,8 @@
 - 테스트는 docker compose 활용
 - 환경변수로 allowed hosts, secret key, db, env 정보 입력
 - gunicorn 사용
+- ERD
+  ![ERD image](images/erd.png)
 
 # TODO
 
@@ -55,15 +57,18 @@
 ## DRF
 
 - [x] 프로젝트 생성
+- [ ] 앱 생성
 - [x] 환경 분리
-- [ ] 설정 변경
+- [x] 설정 변경
 - [x] start script 작성
 - [ ] entrypoint script 작성
+- [x] ERD 구성
+- [ ] 모델 작성
 
 ## docker
 
 - [x] dockerfile 작성
-- [ ] docker compose 구성
+- [x] docker compose 구성
 
 ## terraform
 
@@ -88,6 +93,18 @@
 
 ## Local
 
+.env.local 파일에 이미 작성된 환경변수로 실행 가능합니다.
+
+```bash
+docker compose up -d --build
+# for test
+docker compose exec follow-app python manage.py test
+```
+
 ## staged
 
+staged 테라폼이 적용된 상태에서 develop 브랜치에 PR 생성 시 자동으로 배포됩니다.
+
 ## Prod
+
+prod 테라폼이 적용된 상태에서 develop 브랜치에 PR 완료 시 자동으로 배포됩니다.
