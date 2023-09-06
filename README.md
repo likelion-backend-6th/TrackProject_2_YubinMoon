@@ -57,7 +57,7 @@
 ## DRF
 
 - [x] 프로젝트 생성
-- [ ] 앱 생성
+- [x] 앱 생성
 - [x] 환경 분리
 - [x] 설정 변경
 - [x] start script 작성
@@ -72,22 +72,20 @@
 
 ## terraform
 
-- [ ] server 생성 전 LB url 생성 테스트
-- [ ] network 모듈 생성
-- [ ] server 모듈 생성
-- [ ] LB 모듈 생성
-- [ ] github secret 모듈 생성
-- [ ] staged 환경 생성
-- [ ] prod 환경 생성
+- [x] server 생성 전 LB url 생성 테스트
+- [x] network 모듈 생성
+- [x] server 모듈 생성
+- [x] LB 모듈 생성
+- [ ] github secret 모듈 생성 (실패)
+- [x] prod 환경 생성
 
 ## github actions
 
-- [ ] staged, prod 분리
-- [ ] docker build
-- [ ] DRF test
-- [ ] docker push
-- [ ] server update
-- [ ] 실패시 discord 알림
+- [x] docker build
+- [x] DRF test
+- [x] docker push
+- [x] server update
+- [x] 실패시 discord 알림
 
 # Quick Start
 
