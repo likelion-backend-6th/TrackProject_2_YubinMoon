@@ -45,6 +45,9 @@ resource "ncloud_lb_target_group" "main" {
     down_threshold = 2
   }
   algorithm_type = "RR"
+  lifecycle {
+    ignore_changes = [health_check]
+  }
 }
 
 resource "ncloud_lb_target_group_attachment" "test" {
