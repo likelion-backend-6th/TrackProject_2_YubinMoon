@@ -40,10 +40,11 @@ class PostTest(APITestCase):
         all_users = User.objects.all()
         self.assertEqual(len(data), len(all_users) - 1)
 
-    # def test_get_all_post_created_by_user(self):
-    #     self.client.force_login(self.basic_user)
-    #     res = self.client.get(reverse("post-posts"))
-    #     self.assertEqual(res.status_code, 200)
-    #     data = json.loads(res.content)
-    #     user_posts = Post.objects.filter(owner=self.basic_user)
-    #     self.assertEqual(len(data), len(user_posts))
+    def test_get_all_post_created_by_user(self):
+        self.client.force_login(self.basic_user)
+        res = self.client.get(reverse("user-posts"))
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.content)
+        user_posts = Post.objects.filter(owner=self.basic_user)
+        print(data)
+        self.assertEqual(len(data), len(user_posts))
