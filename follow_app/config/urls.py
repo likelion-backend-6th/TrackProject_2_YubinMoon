@@ -17,8 +17,11 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+
+from tweet.urls import router as tweet_router
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("tweet/", include(tweet_router.urls)),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
