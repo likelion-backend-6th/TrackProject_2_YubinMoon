@@ -2,5 +2,6 @@
 
 echo start server
 
+python manage.py collectstatic
 python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
+gunicorn config.wsgi:application --config config/gunicorn_config.py
