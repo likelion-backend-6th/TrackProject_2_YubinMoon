@@ -37,7 +37,7 @@
 ## INFRA
 
 - terraform으로 staged, prod 환경 따로 구성
-- terraform state는 s3 backend와 NCP Object Storage 사용
+- terraform state는 s3 backend와 NCP Object Storage 사용 -> NCP 지원을 안해줘서 S3로 변경
 - 생성된 인스턴스 ip, LB url등은 github actions secret에 업데이트
 - actions에서 새로운 이미지로 업데이트 가능하도록 구성
 
