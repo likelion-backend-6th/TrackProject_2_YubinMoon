@@ -125,7 +125,6 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           script: |
-            cd lion
             docker login \
             ${{ vars.NCR_REGISTRY }} \
             -u ${{ secrets.NCR_ACCESS_KEY }} \
