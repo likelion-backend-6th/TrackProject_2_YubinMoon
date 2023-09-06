@@ -61,9 +61,12 @@
 - [x] 환경 분리
 - [x] 설정 변경
 - [x] start script 작성
-- [ ] entrypoint script 작성
+- [x] entrypoint script 작성
 - [x] ERD 구성
 - [ ] 모델 작성
+- [ ] 테스트 작성
+- [ ] VIEWSET 생성
+- [ ] boto3 NCP 연결
 
 ## docker
 
