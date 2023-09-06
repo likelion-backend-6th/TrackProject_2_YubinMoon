@@ -4,9 +4,12 @@ import os
 import sys
 
 
+ENV = os.getenv("RUN_MODE", "test")
+
+
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.test")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", f"config.settings.{ENV}")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
