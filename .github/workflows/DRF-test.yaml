@@ -1,0 +1,31 @@
+name: DRF Test
+
+on:
+  push:
+  workflow_call:
+
+jobs:
+  lint:
+    name: black check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: install black
+        run: pip install black
+      - name: check black
+        run: black --check .
+
+  drf-test:
+    needs: lint
+    name: test drf with docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: test
+        run: |
+          docker compose up --build -d
+          docker compose run follow-app python manage.py test
