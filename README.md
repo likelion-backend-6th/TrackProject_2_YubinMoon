@@ -46,6 +46,8 @@
 - 테스트는 docker compose 활용
 - 환경변수로 allowed hosts, secret key, db, env 정보 입력
 - gunicorn 사용
+- ERD
+  ![ERD image](images/erd.png)
 
 # TODO
 
@@ -55,10 +57,13 @@
 ## DRF
 
 - [x] 프로젝트 생성
+- [ ] 앱 생성
 - [x] 환경 분리
 - [x] 설정 변경
 - [x] start script 작성
 - [ ] entrypoint script 작성
+- [x] ERD 구성
+- [ ] 모델 작성
 
 ## docker
 
