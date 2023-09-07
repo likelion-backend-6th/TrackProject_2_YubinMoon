@@ -108,3 +108,17 @@ class PostTest(APITestCase):
             reverse("post-detail", args=[post.pk]), {"content": "update content"}
         )
         self.assertEqual(res.status_code, 403)
+
+    def test_delete_post_with_permission(self):
+        # post owner can delete post
+        self.client.force_login(self.basic_user)
+        post = Post.objects.create(owner=self.basic_user, content="test content")
+        res = self.client.delete(reverse("post-detail", args=[post.pk]))
+        self.assertEqual(res.status_code, 204)
+
+        # other user can't delete post
+        other_user = User.objects.create(username="other", password="other")
+        self.client.force_login(other_user)
+        post = Post.objects.create(owner=self.basic_user, content="test content")
+        res = self.client.delete(reverse("post-detail", args=[post.pk]))
+        self.assertEqual(res.status_code, 403)

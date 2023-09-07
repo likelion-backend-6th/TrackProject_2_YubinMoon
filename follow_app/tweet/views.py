@@ -31,7 +31,7 @@ class UserViewSet(viewsets.ViewSet):
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    model = Post
+    queryset = Post.objects.all()
     serializer_class = PostSerializer
 
     def get_serializer_class(self):
@@ -76,3 +76,10 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def upload_image(self, image) -> str:
         return "just image"
+
+    def destroy(self, request, *args, pk=None, **kwargs):
+        user = request.user
+        post = get_object_or_404(Post, pk=pk)
+        if post.owner != user:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
