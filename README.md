@@ -118,10 +118,11 @@
 - [x] start script 작성
 - [x] entrypoint script 작성
 - [x] ERD 구성
-- [ ] 모델 작성
-- [ ] 테스트 작성
-- [ ] VIEWSET 생성
+- [x] 모델 작성
+- [x] 테스트 작성
+- [x] VIEWSET 생성
 - [ ] boto3 NCP 연결
+- [ ] docs 페이지 생성
 
 ## docker
 
