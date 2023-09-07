@@ -6,7 +6,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 
 from .models import Follow, Image, Post
-from .serializer import PostSerializer
+from .serializer import FollowSerializer, PostSerializer
 
 
 # Create your tests here.
@@ -122,3 +122,41 @@ class PostTest(APITestCase):
         post = Post.objects.create(owner=self.basic_user, content="test content")
         res = self.client.delete(reverse("post-detail", args=[post.pk]))
         self.assertEqual(res.status_code, 403)
+
+
+class FollowTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.base_user = User.objects.create(username="base", password="base")
+        for i in range(3):
+            user1 = User.objects.create(
+                username=f"1_follow_{i}", password=f"1_follow_{i}"
+            )
+            user2 = User.objects.create(
+                username=f"2_follow_{i}", password=f"2_follow_{i}"
+            )
+            user3 = User.objects.create(
+                username=f"3_follow_{i}", password=f"3_follow_{i}"
+            )
+            Follow.objects.create(user=cls.base_user, follow=user1)
+            Follow.objects.create(user=user2, follow=cls.base_user)
+            Follow.objects.create(user=cls.base_user, follow=user3)
+            Follow.objects.create(user=user3, follow=cls.base_user)
+
+    def test_get_all_following(self):
+        self.client.force_login(self.base_user)
+        res = self.client.get(reverse("follow-list"))
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.content)
+        follow_list = Follow.objects.filter(user=self.base_user).all()
+        serializer = FollowSerializer(follow_list, many=True)
+        self.assertEqual(data, serializer.data)
+
+    def test_get_all_followers(self):
+        self.client.force_login(self.base_user)
+        res = self.client.get(reverse("follow-follower"))
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.content)
+        follower_list = Follow.objects.filter(follow=self.base_user).all()
+        serializer = FollowSerializer(follower_list, many=True)
+        self.assertEqual(data, serializer.data)

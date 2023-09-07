@@ -19,3 +19,10 @@ class PostCreateSerializer(serializers.ModelSerializer):
         model = Post
         fields = "__all__"
         read_only_fields = ("owner", "created_at", "image", "updated_at")
+
+
+class FollowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Follow
+        fields = "__all__"
+        read_only_fields = ["created_at"]

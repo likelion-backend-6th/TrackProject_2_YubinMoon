@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Follow, Image, Post
-from .serializer import PostSerializer, PostCreateSerializer
+from .serializer import PostSerializer, PostCreateSerializer, FollowSerializer
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -83,3 +83,19 @@ class PostViewSet(viewsets.ModelViewSet):
         if post.owner != user:
             return Response(status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+
+class FollowViewSet(viewsets.ModelViewSet):
+    queryset = Follow.objects.all()
+    serializer_class = FollowSerializer
+
+    def list(self, request, *args, **kwargs):
+        follow_list = Follow.objects.filter(user=request.user).all()
+        serializer = FollowSerializer(follow_list, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+    @action(detail=False, methods=["GET"])
+    def follower(self, request, *args, **kwargs):
+        follow_list = Follow.objects.filter(follow=request.user).all()
+        serializer = FollowSerializer(follow_list, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
