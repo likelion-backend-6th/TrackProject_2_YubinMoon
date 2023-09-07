@@ -1,5 +1,15 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Follow, Image, Post
+
+
+class userSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(required=True)
+
+    class Meta:
+        model = User
+        fields = ["pk", "username"]
+        read_only_fields = ["pk"]
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -22,7 +32,19 @@ class PostCreateSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
+    user = userSerializer()
+    follow = userSerializer()
+
     class Meta:
         model = Follow
         fields = "__all__"
         read_only_fields = ["created_at"]
+
+
+class CreateFollowSerializer(serializers.ModelSerializer):
+    follow = serializers.CharField(required=True)
+
+    class Meta:
+        model = Follow
+        fields = "__all__"
+        read_only_fields = ["user", "created_at"]

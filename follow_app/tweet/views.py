@@ -5,7 +5,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Follow, Image, Post
-from .serializer import PostSerializer, PostCreateSerializer, FollowSerializer
+from .serializer import (
+    PostSerializer,
+    PostCreateSerializer,
+    FollowSerializer,
+    CreateFollowSerializer,
+)
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -89,6 +94,11 @@ class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = FollowSerializer
 
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CreateFollowSerializer
+        return super().get_serializer_class()
+
     def list(self, request, *args, **kwargs):
         follow_list = Follow.objects.filter(user=request.user).all()
         serializer = FollowSerializer(follow_list, many=True)
@@ -99,3 +109,30 @@ class FollowViewSet(viewsets.ModelViewSet):
         follow_list = Follow.objects.filter(follow=request.user).all()
         serializer = FollowSerializer(follow_list, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        follow_pk = request.data.get("follow")
+        follow = get_object_or_404(User, pk=follow_pk)
+        if follow == user:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={"detail": "can't follow yourself"},
+            )
+        exist = Follow.objects.filter(user=user, follow=follow).first()
+        if exist:
+            return Response(
+                status=status.HTTP_302_FOUND, data=FollowSerializer(exist).data
+            )
+        follow = Follow.objects.create(user=user, follow=follow)
+        serializer = FollowSerializer(follow)
+        return Response(status=status.HTTP_201_CREATED, data=serializer.data)
+
+    def destroy(self, request, *args, pk=None, **kwargs):
+        user = request.user
+        follow_user = get_object_or_404(User, pk=pk)
+        follow = Follow.objects.filter(user=user, follow=follow_user).first()
+        if follow:
+            follow.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_404_NOT_FOUND)

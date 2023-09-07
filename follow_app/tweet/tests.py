@@ -1,8 +1,10 @@
-import json
 import io
+import json
 import tempfile
+
 from django.contrib.auth.models import User
 from django.urls import reverse
+from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import Follow, Image, Post
@@ -28,7 +30,7 @@ class UserTest(APITestCase):
     def test_get_all_user(self):
         self.client.force_login(self.basic_user)
         res = self.client.get(reverse("user-list"))
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = json.loads(res.content)
         all_users = User.objects.all()
         self.assertEqual(len(data), len(all_users) - 1)
@@ -36,7 +38,7 @@ class UserTest(APITestCase):
     def test_get_all_post_created_by_user(self):
         self.client.force_login(self.basic_user)
         res = self.client.get(reverse("user-posts"))
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = json.loads(res.content)
         user_posts = Post.objects.filter(owner=self.basic_user)
         self.assertEqual(len(data), len(user_posts))
@@ -73,7 +75,7 @@ class PostTest(APITestCase):
     def test_write_post(self):
         self.client.force_login(self.basic_user)
         res = self.client.post(reverse("post-list"), {"content": "test content"})
-        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         data = json.loads(res.content)
         self.assertEqual(data["content"], "test content")
         self.assertEqual(data["owner"], self.basic_user.username)
@@ -83,7 +85,7 @@ class PostTest(APITestCase):
             data = {"content": "image content", "image": tmpfile}
             self.client.force_login(self.basic_user)
             res = self.client.post(reverse("post-list"), data)
-            self.assertEqual(res.status_code, 201)
+            self.assertEqual(res.status_code, status.HTTP_201_CREATED)
             data = json.loads(res.content)
             self.assertEqual(data["content"], "image content")
             self.assertEqual(data["owner"], self.basic_user.username)
@@ -95,7 +97,7 @@ class PostTest(APITestCase):
         res = self.client.put(
             reverse("post-detail", args=[post.pk]), {"content": "update content"}
         )
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = json.loads(res.content)
         self.assertEqual(data["content"], "update content")
         self.assertEqual(data["owner"], self.basic_user.username)
@@ -107,21 +109,21 @@ class PostTest(APITestCase):
         res = self.client.put(
             reverse("post-detail", args=[post.pk]), {"content": "update content"}
         )
-        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_post_with_permission(self):
         # post owner can delete post
         self.client.force_login(self.basic_user)
         post = Post.objects.create(owner=self.basic_user, content="test content")
         res = self.client.delete(reverse("post-detail", args=[post.pk]))
-        self.assertEqual(res.status_code, 204)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
         # other user can't delete post
         other_user = User.objects.create(username="other", password="other")
         self.client.force_login(other_user)
         post = Post.objects.create(owner=self.basic_user, content="test content")
         res = self.client.delete(reverse("post-detail", args=[post.pk]))
-        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class FollowTest(APITestCase):
@@ -146,7 +148,7 @@ class FollowTest(APITestCase):
     def test_get_all_following(self):
         self.client.force_login(self.base_user)
         res = self.client.get(reverse("follow-list"))
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = json.loads(res.content)
         follow_list = Follow.objects.filter(user=self.base_user).all()
         serializer = FollowSerializer(follow_list, many=True)
@@ -155,8 +157,42 @@ class FollowTest(APITestCase):
     def test_get_all_followers(self):
         self.client.force_login(self.base_user)
         res = self.client.get(reverse("follow-follower"))
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = json.loads(res.content)
         follower_list = Follow.objects.filter(follow=self.base_user).all()
         serializer = FollowSerializer(follower_list, many=True)
         self.assertEqual(data, serializer.data)
+
+    def test_follow(self):
+        # 정상 요청
+        self.client.force_login(self.base_user)
+        test_user = Follow.objects.exclude(user=self.base_user).first().user
+        res = self.client.post(reverse("follow-list"), {"follow": test_user.pk})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        data = json.loads(res.content)
+        self.assertEqual(data["user"]["pk"], self.base_user.pk)
+        self.assertEqual(data["follow"]["pk"], test_user.pk)
+
+        # 이미 팔로우
+        self.client.force_login(self.base_user)
+        follow = Follow.objects.filter(user=self.base_user).first().follow
+        res = self.client.post(reverse("follow-list"), {"follow": follow.pk})
+        self.assertEqual(res.status_code, status.HTTP_302_FOUND)
+
+        # 본인과 팔로우
+        self.client.force_login(self.base_user)
+        res = self.client.post(reverse("follow-list"), {"follow": self.base_user.pk})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_unfollow(self):
+        # 존재하는 팔로우 삭제
+        self.client.force_login(self.base_user)
+        follow = Follow.objects.filter(user=self.base_user).first().follow
+        res = self.client.delete(reverse("follow-detail", args=[follow.pk]))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+        # 존재하지 않는 팔로우 삭제
+        self.client.force_login(self.base_user)
+        follow = Follow.objects.exclude(user=self.base_user).first().follow
+        res = self.client.delete(reverse("follow-detail", args=[follow.pk]))
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
