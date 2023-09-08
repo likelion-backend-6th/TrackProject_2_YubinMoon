@@ -1,21 +1,22 @@
-import boto3
 import os
 import uuid
+
+import boto3
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render
-from rest_framework import status, viewsets, mixins
-from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Follow, Image, Post
 from .serializer import (
-    UserSerializer,
-    UserListSerializer,
-    PostSerializer,
-    PostCreateSerializer,
-    FollowSerializer,
     CreateFollowSerializer,
+    FollowSerializer,
+    PostCreateSerializer,
+    PostSerializer,
+    UserListSerializer,
+    UserSerializer,
 )
 
 
