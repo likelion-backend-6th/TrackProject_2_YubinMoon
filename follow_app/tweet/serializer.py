@@ -3,13 +3,18 @@ from rest_framework import serializers
 from .models import Follow, Image, Post
 
 
-class userSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(required=True)
 
     class Meta:
         model = User
         fields = ["pk", "username"]
         read_only_fields = ["pk"]
+
+
+class UserListSerializer(serializers.Serializer):
+    user = UserSerializer(instance=User)
+    following = serializers.BooleanField()
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -32,8 +37,8 @@ class PostCreateSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    user = userSerializer()
-    follow = userSerializer()
+    user = UserSerializer()
+    follow = UserSerializer()
 
     class Meta:
         model = Follow
