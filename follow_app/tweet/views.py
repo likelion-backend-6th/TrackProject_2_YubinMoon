@@ -1,7 +1,11 @@
+import boto3
+import os
+import uuid
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from .models import Follow, Image, Post
@@ -13,6 +17,7 @@ from .serializer import (
 )
 
 
+@extend_schema(tags=["User"])
 class UserViewSet(viewsets.ViewSet):
     def list(self, request, *args, **kwargs):
         user = request.user
@@ -35,6 +40,7 @@ class UserViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
+@extend_schema(tags=["Post"])
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -80,7 +86,24 @@ class PostViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_200_OK, data=PostSerializer(post).data)
 
     def upload_image(self, image) -> str:
-        return "just image"
+        # connect to boto3
+        service_name = "s3"
+        endpoint_url = "https://kr.object.ncloudstorage.com"
+        access_key = os.getenv("NCP_ACCESS_KEY")
+        secret_key = os.getenv("NCP_SECRET_KEY")
+        print(access_key)
+        s3 = boto3.client(
+            service_name,
+            endpoint_url=endpoint_url,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+        )
+        bucket_name = "follow-image"
+        image_id = f"{str(uuid.uuid4())}.{image.name.split('.')[-1]}"
+        s3.upload_fileobj(image.file, bucket_name, image_id)
+        s3.put_object_acl(Bucket=bucket_name, Key=image_id, ACL="public-read")
+        url = f"{endpoint_url}/{bucket_name}/{image_id}"
+        return url
 
     def destroy(self, request, *args, pk=None, **kwargs):
         user = request.user
@@ -90,6 +113,7 @@ class PostViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+@extend_schema(tags=["Follow"])
 class FollowViewSet(viewsets.ModelViewSet):
     queryset = Follow.objects.all()
     serializer_class = FollowSerializer

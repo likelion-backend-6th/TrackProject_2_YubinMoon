@@ -1,6 +1,7 @@
 import io
 import json
 import tempfile
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -80,7 +81,10 @@ class PostTest(APITestCase):
         self.assertEqual(data["content"], "test content")
         self.assertEqual(data["owner"], self.basic_user.username)
 
-    def test_write_post_with_image(self):
+    @patch("tweet.views.PostViewSet.upload_image")
+    def test_write_post_with_image(self, upload_image_mock: MagicMock):
+        img_url = "https://test.com/test.jpg"
+        upload_image_mock.return_value = img_url
         with tempfile.NamedTemporaryFile(suffix=".jpg") as tmpfile:
             data = {"content": "image content", "image": tmpfile}
             self.client.force_login(self.basic_user)
@@ -89,6 +93,7 @@ class PostTest(APITestCase):
             data = json.loads(res.content)
             self.assertEqual(data["content"], "image content")
             self.assertEqual(data["owner"], self.basic_user.username)
+            self.assertEqual(data["image"], img_url)
 
     def test_update_post_with_permision(self):
         # post owner can update post
