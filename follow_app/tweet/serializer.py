@@ -53,3 +53,29 @@ class CreateFollowSerializer(serializers.ModelSerializer):
         model = Follow
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
+
+
+class FollowerSerializer(serializers.ModelSerializer):
+    follower = UserSerializer()
+
+    class Meta:
+        model = Follow
+        fields = ["follower", "created_at"]
+        read_only_fields = ["created_at"]
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response["follower"] = UserSerializer(instance.follower).data
+        return response
+
+
+class FollowingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Follow
+        fields = ["following", "created_at"]
+        read_only_fields = ["created_at"]
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response["following"] = UserSerializer(instance.following).data
+        return response

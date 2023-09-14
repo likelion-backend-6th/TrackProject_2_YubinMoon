@@ -3,20 +3,22 @@ from django.contrib.auth.models import User
 
 
 class Follow(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="following")
-    follow = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="followed_by"
+    follower = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="following"
+    )
+    following = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="follower"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=["user"]),
-            models.Index(fields=["follow"]),
+            models.Index(fields=["follower"]),
+            models.Index(fields=["following"]),
         ]
 
     def __str__(self):
-        return f"{self.user} follows {self.follow}"
+        return f"{self.follower} follows {self.following}"
 
 
 class Image(models.Model):
@@ -31,6 +33,7 @@ class Post(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
+    private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
