@@ -20,11 +20,11 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from tweet.urls import router as tweet_router
+from tweet.urls import urlpatterns as tweet_urlpatterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("tweet/", include(tweet_router.urls)),
+    path("", include(tweet_urlpatterns)),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",

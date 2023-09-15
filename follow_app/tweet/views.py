@@ -1,11 +1,13 @@
 import os
 import uuid
+import json
+import pprint
 
 import boto3
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render
 from drf_spectacular.utils import extend_schema
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, status, viewsets, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -13,11 +15,46 @@ from .models import Follow, Image, Post
 from .serializer import (
     CreateFollowSerializer,
     FollowSerializer,
-    PostCreateSerializer,
+    CreatePostSerializer,
     PostSerializer,
-    UserListSerializer,
     UserSerializer,
+    UserSerializer,
+    FollowerSerializer,
+    FollowingSerializer,
 )
+
+
+class CommonAPIView(views.APIView):
+    def get_serializer_context(self):
+        return {"request": self.request, "view": self}
+
+
+@extend_schema(
+    tags=["User"],
+    summary="전체 유저 조회",
+    description="본인을 제외한 모든 유저를 조회",
+    responses={200: UserSerializer(many=True)},
+)
+class UserListAPIView(CommonAPIView):
+    def get(self, request):
+        user_list = User.objects.exclude(pk=request.user.pk).all()
+        context = self.get_serializer_context()
+        serializer = UserSerializer(user_list, context=context, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["User"],
+    summary="유저의 전체 개시물 조회",
+    description="유저가 작성한 모든 개시물을 조회",
+    responses={200: PostSerializer(many=True)},
+)
+class UserPostsAPIView(CommonAPIView):
+    def get(self, request):
+        user = request.user
+        posts = Post.objects.filter(owner=user).all()
+        serializer = PostSerializer(posts, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
 @extend_schema(tags=["User"])
@@ -25,14 +62,14 @@ class UserViewSet(viewsets.ViewSet):
     @extend_schema(
         summary="전체 유저 조회",
         description="본인을 제외한 모든 유저를 조회",
-        responses={200: UserListSerializer(many=True)},
+        responses={200: UserSerializer(many=True)},
     )
     def list(self, request, *args, **kwargs):
         user = request.user
         user_list = User.objects.exclude(pk=user.pk).all()
         data = []
         for u in user_list:
-            serializer = UserListSerializer(
+            serializer = UserSerializer(
                 data={
                     "user": UserSerializer(u).data,
                     "following": Follow.objects.filter(user=u, follow=user).exists(),
@@ -68,7 +105,7 @@ class PostViewSet(
 
     def get_serializer_class(self):
         if self.action == "create":
-            return PostCreateSerializer
+            return CreatePostSerializer
         return super().get_serializer_class()
 
     @extend_schema(
@@ -86,7 +123,7 @@ class PostViewSet(
     @extend_schema(
         summary="개시물 생성",
         description="새로운 개시물 작성",
-        request=PostCreateSerializer,
+        request=CreatePostSerializer,
         responses={200: PostSerializer()},
     )
     def create(self, request, *args, **kwargs):
@@ -104,7 +141,7 @@ class PostViewSet(
     @extend_schema(
         summary="개시물 수정",
         description="개시물 내용 수정",
-        request=PostCreateSerializer,
+        request=CreatePostSerializer,
         responses={200: PostSerializer()},
     )
     def update(self, request, *args, pk=None, **kwargs):

@@ -4,30 +4,37 @@ from .models import Follow, Image, Post
 
 
 class UserSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(required=True)
-
     class Meta:
         model = User
         fields = ["pk", "username"]
-        read_only_fields = ["pk"]
 
-
-class UserListSerializer(serializers.Serializer):
-    user = UserSerializer(instance=User)
-    following = serializers.BooleanField()
+    def to_representation(self, instance):
+        request = self.context.get("request")
+        if request is None:
+            return super().to_representation(instance)
+        user = request.user
+        response = super().to_representation(instance)
+        response["following"] = Follow.objects.filter(
+            follower=user, following=instance
+        ).exists()
+        return response
 
 
 class PostSerializer(serializers.ModelSerializer):
     image = serializers.URLField(read_only=True)
-    owner = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Post
         fields = "__all__"
         read_only_fields = ["created_at", "updated_at"]
 
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response["owner"] = UserSerializer(instance.owner, context=self.context).data
+        return response
 
-class PostCreateSerializer(serializers.ModelSerializer):
+
+class CreatePostSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
 
     class Meta:
