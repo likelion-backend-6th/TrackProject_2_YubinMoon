@@ -57,42 +57,6 @@ class UserPostsAPIView(CommonAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
-@extend_schema(tags=["User"])
-class UserViewSet(viewsets.ViewSet):
-    @extend_schema(
-        summary="전체 유저 조회",
-        description="본인을 제외한 모든 유저를 조회",
-        responses={200: UserSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        user = request.user
-        user_list = User.objects.exclude(pk=user.pk).all()
-        data = []
-        for u in user_list:
-            serializer = UserSerializer(
-                data={
-                    "user": UserSerializer(u).data,
-                    "following": Follow.objects.filter(user=u, follow=user).exists(),
-                }
-            )
-            if not serializer.is_valid():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            data.append(serializer.data)
-        return Response(status=status.HTTP_200_OK, data=data)
-
-    @extend_schema(
-        summary="유저의 전체 개시물 조회",
-        description="유저가 작성한 모든 개시물을 조회",
-        responses={200: PostSerializer(many=True)},
-    )
-    @action(detail=False, methods=["get"])
-    def posts(self, request, *args, **kwargs):
-        user = request.user
-        posts = Post.objects.filter(owner=user)
-        serializer = PostSerializer(posts, many=True)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
-
-
 @extend_schema(tags=["Post"], description="개시물과 관련된 API")
 class PostViewSet(
     mixins.CreateModelMixin,
@@ -104,7 +68,7 @@ class PostViewSet(
     serializer_class = PostSerializer
 
     def get_serializer_class(self):
-        if self.action == "create":
+        if self.action in ["create", "update"]:
             return CreatePostSerializer
         return super().get_serializer_class()
 
@@ -115,8 +79,12 @@ class PostViewSet(
     )
     def list(self, request, *args, **kwargs):
         user = request.user
-        follow_list = Follow.objects.filter(user=user).values_list("pk", flat=True)
-        posts = Post.objects.filter(owner__in=follow_list).all()
+        posts = (
+            Post.objects.select_related("owner")
+            .prefetch_related("owner__follower")
+            .filter(owner__follower__follower=user)
+            .all()
+        )
         serializer = PostSerializer(posts, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
@@ -127,16 +95,11 @@ class PostViewSet(
         responses={200: PostSerializer()},
     )
     def create(self, request, *args, **kwargs):
-        user = request.user
-        content = request.data.get("content")
-        image = request.data.get("image")
-        img = None
-        if image:
-            url = self.upload_image(image)
-            img = Image.objects.create(url=url)
-        post = Post.objects.create(owner=user, content=content, image=img)
-        serializer = PostSerializer(post)
-        return Response(status=status.HTTP_201_CREATED, data=serializer.data)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        data = PostSerializer(serializer.save()).data
+        return Response(status=status.HTTP_201_CREATED, data=data)
 
     @extend_schema(
         summary="개시물 수정",
@@ -149,16 +112,11 @@ class PostViewSet(
         post = get_object_or_404(Post, pk=pk)
         if post.owner != user:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        content = request.data.get("content")
-        image = request.data.get("image")
-        img = None
-        if image:
-            url = self.upload_image(image)
-            img = Image.objects.create(url=url)
-        post.content = content
-        post.image = img
-        post.save()
-        return Response(status=status.HTTP_200_OK, data=PostSerializer(post).data)
+        serializer = self.get_serializer(post, data=request.data)
+        if not serializer.is_valid():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        new_post = serializer.save()
+        return Response(status=status.HTTP_200_OK, data=PostSerializer(new_post).data)
 
     def upload_image(self, image) -> str:
         # connect to boto3

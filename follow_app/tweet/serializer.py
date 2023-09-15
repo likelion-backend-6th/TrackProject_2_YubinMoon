@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Follow, Image, Post
+from utils import image
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -26,7 +27,7 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = "__all__"
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["pk", "owner", "created_at", "updated_at"]
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
@@ -39,8 +40,17 @@ class CreatePostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = "__all__"
-        read_only_fields = ("owner", "created_at", "image", "updated_at")
+        fields = ["content", "image"]
+
+    def save(self, **kwargs):
+        img = self.validated_data.get("image")
+        request = self.context.get("request")
+        kwargs["owner"] = request.user
+        if img:
+            url = image.upload(img)
+            img_url = Image.objects.create(url=url)
+            kwargs["image"] = img_url
+        return super().save(**kwargs)
 
 
 class FollowSerializer(serializers.ModelSerializer):
