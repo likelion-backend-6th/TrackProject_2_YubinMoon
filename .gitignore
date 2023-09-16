@@ -180,3 +180,6 @@ terraform.rc
 
 # credentials
 .credentials
+
+# helm
+secret-values.yaml
