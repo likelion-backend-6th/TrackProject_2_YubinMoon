@@ -1,39 +1,56 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Follow, Image, Post
+from utils import image
 
 
 class UserSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(required=True)
-
     class Meta:
         model = User
         fields = ["pk", "username"]
-        read_only_fields = ["pk"]
 
-
-class UserListSerializer(serializers.Serializer):
-    user = UserSerializer(instance=User)
-    following = serializers.BooleanField()
+    def to_representation(self, instance):
+        request = self.context.get("request")
+        if request is None:
+            return super().to_representation(instance)
+        user = request.user
+        response = super().to_representation(instance)
+        response["following"] = Follow.objects.filter(
+            follower=user, following=instance
+        ).exists()
+        return response
 
 
 class PostSerializer(serializers.ModelSerializer):
     image = serializers.URLField(read_only=True)
-    owner = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Post
         fields = "__all__"
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["pk", "owner", "created_at", "updated_at"]
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        response["owner"] = UserSerializer(instance.owner, context=self.context).data
+        return response
 
 
-class PostCreateSerializer(serializers.ModelSerializer):
+class CreatePostSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
 
     class Meta:
         model = Post
-        fields = "__all__"
-        read_only_fields = ("owner", "created_at", "image", "updated_at")
+        fields = ["content", "image"]
+
+    def save(self, **kwargs):
+        img = self.validated_data.get("image")
+        request = self.context.get("request")
+        kwargs["owner"] = request.user
+        if img:
+            url = image.upload(img)
+            img_url = Image.objects.create(url=url)
+            kwargs["image"] = img_url
+        return super().save(**kwargs)
 
 
 class FollowSerializer(serializers.ModelSerializer):

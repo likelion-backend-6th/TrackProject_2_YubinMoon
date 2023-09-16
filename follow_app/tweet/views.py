@@ -1,59 +1,104 @@
-import os
-import uuid
-
-import boto3
+from rest_framework import serializers
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404, render
-from drf_spectacular.utils import extend_schema
-from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, status, viewsets, views
 from rest_framework.response import Response
 
-from .models import Follow, Image, Post
+from .models import Follow, Post
 from .serializer import (
-    CreateFollowSerializer,
-    FollowSerializer,
-    PostCreateSerializer,
+    CreatePostSerializer,
     PostSerializer,
-    UserListSerializer,
     UserSerializer,
 )
 
 
-@extend_schema(tags=["User"])
-class UserViewSet(viewsets.ViewSet):
-    @extend_schema(
-        summary="전체 유저 조회",
-        description="본인을 제외한 모든 유저를 조회",
-        responses={200: UserListSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        user = request.user
-        user_list = User.objects.exclude(pk=user.pk).all()
-        data = []
-        for u in user_list:
-            serializer = UserListSerializer(
-                data={
-                    "user": UserSerializer(u).data,
-                    "following": Follow.objects.filter(user=u, follow=user).exists(),
-                }
-            )
-            if not serializer.is_valid():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            data.append(serializer.data)
-        return Response(status=status.HTTP_200_OK, data=data)
+class CommonAPIView(views.APIView):
+    def get_serializer_context(self):
+        return {"request": self.request, "view": self}
 
-    @extend_schema(
-        summary="유저의 전체 개시물 조회",
-        description="유저가 작성한 모든 개시물을 조회",
-        responses={200: PostSerializer(many=True)},
-    )
-    @action(detail=False, methods=["get"])
-    def posts(self, request, *args, **kwargs):
+
+@extend_schema(
+    tags=["User"],
+    summary="전체 유저 조회",
+    description="본인을 제외한 모든 유저를 조회",
+    responses={200: UserSerializer(many=True)},
+)
+class UserListAPIView(CommonAPIView):
+    def get(self, request):
+        user_list = User.objects.exclude(pk=request.user.pk).all()
+        context = self.get_serializer_context()
+        serializer = UserSerializer(user_list, context=context, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["User"],
+    summary="유저의 전체 개시물 조회",
+    description="유저가 작성한 모든 개시물을 조회",
+    responses={200: PostSerializer(many=True)},
+)
+class UserPostsAPIView(CommonAPIView):
+    def get(self, request):
         user = request.user
-        posts = Post.objects.filter(owner=user)
+        posts = Post.objects.filter(owner=user).all()
         serializer = PostSerializer(posts, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["Follow"],
+    summary="팔로우 목록",
+    description="유저가 팔로우한 유저 목록",
+    responses={200: UserSerializer(many=True)},
+)
+class FollowingAPIView(CommonAPIView):
+    def get(self, request):
+        user = request.user
+        following_users = User.objects.prefetch_related("follower").filter(
+            follower__follower=user
+        )
+        serializer = UserSerializer(following_users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["Follow"],
+    summary="팔로워 목록",
+    description="유저를 팔로우한 유저 목록",
+    responses={200: UserSerializer(many=True)},
+)
+class FollowerAPIView(CommonAPIView):
+    def get(self, request):
+        user = request.user
+        following_users = User.objects.prefetch_related("following").filter(
+            following__following=user
+        )
+        serializer = UserSerializer(following_users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["Follow"],
+    summary="팔로잉 토글",
+    description="유저를 팔로우 하거나 언팔로우",
+    request=inline_serializer(
+        name="inline serializer", fields={"user": serializers.IntegerField()}
+    ),
+    responses={200: None, 201: None},
+)
+class FollowAPIView(CommonAPIView):
+    def post(self, request):
+        user = request.user
+        follow_user = get_object_or_404(User, pk=request.data.get("user"))
+        if user == follow_user:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        follow = Follow.objects.filter(follower=user, following=follow_user).first()
+        if follow:
+            follow.delete()
+            return Response(status=status.HTTP_200_OK)
+        Follow.objects.create(follower=user, following=follow_user)
+        return Response(status=status.HTTP_201_CREATED)
 
 
 @extend_schema(tags=["Post"], description="개시물과 관련된 API")
@@ -67,8 +112,8 @@ class PostViewSet(
     serializer_class = PostSerializer
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return PostCreateSerializer
+        if self.action in ["create", "update"]:
+            return CreatePostSerializer
         return super().get_serializer_class()
 
     @extend_schema(
@@ -78,33 +123,32 @@ class PostViewSet(
     )
     def list(self, request, *args, **kwargs):
         user = request.user
-        follow_list = Follow.objects.filter(user=user).values_list("pk", flat=True)
-        posts = Post.objects.filter(owner__in=follow_list).all()
+        posts = (
+            Post.objects.select_related("owner")
+            .prefetch_related("owner__follower")
+            .filter(owner__follower__follower=user)
+            .all()
+        )
         serializer = PostSerializer(posts, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     @extend_schema(
         summary="개시물 생성",
         description="새로운 개시물 작성",
-        request=PostCreateSerializer,
+        request=CreatePostSerializer,
         responses={200: PostSerializer()},
     )
     def create(self, request, *args, **kwargs):
-        user = request.user
-        content = request.data.get("content")
-        image = request.data.get("image")
-        img = None
-        if image:
-            url = self.upload_image(image)
-            img = Image.objects.create(url=url)
-        post = Post.objects.create(owner=user, content=content, image=img)
-        serializer = PostSerializer(post)
-        return Response(status=status.HTTP_201_CREATED, data=serializer.data)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        data = PostSerializer(serializer.save()).data
+        return Response(status=status.HTTP_201_CREATED, data=data)
 
     @extend_schema(
         summary="개시물 수정",
         description="개시물 내용 수정",
-        request=PostCreateSerializer,
+        request=CreatePostSerializer,
         responses={200: PostSerializer()},
     )
     def update(self, request, *args, pk=None, **kwargs):
@@ -112,36 +156,11 @@ class PostViewSet(
         post = get_object_or_404(Post, pk=pk)
         if post.owner != user:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        content = request.data.get("content")
-        image = request.data.get("image")
-        img = None
-        if image:
-            url = self.upload_image(image)
-            img = Image.objects.create(url=url)
-        post.content = content
-        post.image = img
-        post.save()
-        return Response(status=status.HTTP_200_OK, data=PostSerializer(post).data)
-
-    def upload_image(self, image) -> str:
-        # connect to boto3
-        service_name = "s3"
-        endpoint_url = "https://kr.object.ncloudstorage.com"
-        access_key = os.getenv("NCP_ACCESS_KEY")
-        secret_key = os.getenv("NCP_SECRET_KEY")
-        print(access_key)
-        s3 = boto3.client(
-            service_name,
-            endpoint_url=endpoint_url,
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-        )
-        bucket_name = "follow-image"
-        image_id = f"{str(uuid.uuid4())}.{image.name.split('.')[-1]}"
-        s3.upload_fileobj(image.file, bucket_name, image_id)
-        s3.put_object_acl(Bucket=bucket_name, Key=image_id, ACL="public-read")
-        url = f"{endpoint_url}/{bucket_name}/{image_id}"
-        return url
+        serializer = self.get_serializer(post, data=request.data)
+        if not serializer.is_valid():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        new_post = serializer.save()
+        return Response(status=status.HTTP_200_OK, data=PostSerializer(new_post).data)
 
     @extend_schema(
         summary="개시물 삭제",
@@ -154,78 +173,3 @@ class PostViewSet(
         if post.owner != user:
             return Response(status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
-
-
-@extend_schema(tags=["Follow"], description="팔로우와 관련된 API")
-class FollowViewSet(
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet,
-):
-    queryset = Follow.objects.all()
-    serializer_class = FollowSerializer
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return CreateFollowSerializer
-        return super().get_serializer_class()
-
-    @extend_schema(
-        summary="팔로우 목록",
-        description="유저가 팔로우한 유저 목록",
-        responses={200: FollowSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        follow_list = Follow.objects.filter(user=request.user).all()
-        serializer = FollowSerializer(follow_list, many=True)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
-
-    @extend_schema(
-        summary="팔로워 목록",
-        description="유저를 팔로우한 유저 목록",
-        responses={200: FollowSerializer(many=True)},
-    )
-    @action(detail=False, methods=["GET"])
-    def follower(self, request, *args, **kwargs):
-        follow_list = Follow.objects.filter(follow=request.user).all()
-        serializer = FollowSerializer(follow_list, many=True)
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
-
-    @extend_schema(
-        summary="팔로우",
-        description="새로운 유저 팔로우",
-        request=CreateFollowSerializer,
-        responses={200: FollowSerializer(many=True)},
-    )
-    def create(self, request, *args, **kwargs):
-        user = request.user
-        follow_pk = request.data.get("follow")
-        follow = get_object_or_404(User, pk=follow_pk)
-        if follow == user:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "can't follow yourself"},
-            )
-        exist = Follow.objects.filter(user=user, follow=follow).first()
-        if exist:
-            return Response(
-                status=status.HTTP_302_FOUND, data=FollowSerializer(exist).data
-            )
-        follow = Follow.objects.create(user=user, follow=follow)
-        serializer = FollowSerializer(follow)
-        return Response(status=status.HTTP_201_CREATED, data=serializer.data)
-
-    @extend_schema(
-        summary="언팔로우",
-        description="선택한 유저 언팔로우",
-        responses={200: FollowSerializer(many=True)},
-    )
-    def destroy(self, request, *args, pk=None, **kwargs):
-        user = request.user
-        follow_user = get_object_or_404(User, pk=pk)
-        follow = Follow.objects.filter(user=user, follow=follow_user).first()
-        if follow:
-            follow.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_404_NOT_FOUND)

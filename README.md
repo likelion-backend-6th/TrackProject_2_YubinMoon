@@ -50,58 +50,52 @@
 - API  
   ```yaml
   User:
-    - path: /tweet/user
+    - path: /users
       method: GET
       description: 전체 유저 조회
       response: 유저 리스트
     
-    - path: /tweet/user/posts
+    - path: /user/post
       method: GET
       description: 유저가 작성한 전체 개시글 조회
       response: 개시글 리스트
 
   Post:
-    - path: /tweet/post
+    - path: /post
       method: GET
       description: 전체 개시글 조회
       response: 개시글 리스트
 
-    - path: /tweet/post
+    - path: /post
       method: POST
       description: 개시글 작성
       response: 생성된 개시글 정보
 
-    - path: /tweet/post/<int:post_id>
+    - path: /post/<int:post_id>
       method: PUT
       description: 개시글 수정
       response: 수정된 개시글 정보
     
-    - path: /tweet/post/<int:post_id>
+    - path: /post/<int:post_id>
       method: DELETE
       description: 개시글 삭제
       response: 삭제된 개시글 정보
 
   Follow:
-    - path: /tweet/follow
+    - path: /user/following
       method: GET
       description: 팔로우한 유저 조회
       response: 유저 리스트
-    
-    - path: /tweet/follow
-      method: POST
-      description: 팔로우 생성
-      response: 204
-    
-    - path: /tweet/follow/<int:user_id>
-      method: DELETE
-      description: 언팔로우
-      response: 204
 
-    - path: /tweet/follow/follower
+    - path: /user/follower
       method: GET
       description: 나를 팔로우한 유저 조회
       response: 유저 리스트
-
+    
+    - path: /user/follow/
+      method: POST
+      description: 팔로우 토글
+      response: 결과
   ```
 # TODO
 
