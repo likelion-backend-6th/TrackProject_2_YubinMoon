@@ -20,8 +20,8 @@ resource "ncloud_vpc" "main" {
   ipv4_cidr_block = "10.0.0.0/16"
 }
 
-resource "ncloud_subnet" "server" {
-  name           = "${var.ENV}-server-subnet"
+resource "ncloud_subnet" "main" {
+  name           = var.ENV
   vpc_no         = ncloud_vpc.main.id
   subnet         = cidrsubnet(ncloud_vpc.main.ipv4_cidr_block, 8, 1)
   zone           = "KR-2"
@@ -31,7 +31,7 @@ resource "ncloud_subnet" "server" {
 }
 
 resource "ncloud_subnet" "lb" {
-  name           = "${var.ENV}-lb-subnet"
+  name           = "${var.ENV}-lb"
   vpc_no         = ncloud_vpc.main.id
   subnet         = cidrsubnet(ncloud_vpc.main.ipv4_cidr_block, 8, 2)
   zone           = "KR-2"
@@ -39,4 +39,3 @@ resource "ncloud_subnet" "lb" {
   subnet_type    = "PRIVATE"
   usage_type     = "LOADB"
 }
-
