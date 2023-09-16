@@ -1,17 +1,14 @@
-import io
-import json
-import tempfile
-from unittest.mock import MagicMock, patch
-from PIL import Image as PImage
 from io import BytesIO
+from unittest.mock import MagicMock, patch
+
 from django.contrib.auth.models import User
-from django.urls import reverse
-from rest_framework import status
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from PIL import Image as PImage
+from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Follow, Image, Post
-from .serializer import FollowSerializer, PostSerializer
+from .models import Follow, Post
 
 
 class UserTest(APITestCase):
@@ -179,6 +176,12 @@ class PostTest(APITestCase):
         res = self.client.put(reverse("post-detail", args=[post.pk]), data)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
+        # 없는 개시물 업데이트
+        self.client.force_login(self.basic_user)
+        data = {"content": "update content"}
+        res = self.client.put(reverse("post-detail", args=[100]), data)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
     @patch("utils.image.upload")
     def test_update_post_with_image(self, upload_image_mock: MagicMock):
         # 이미지 생성
@@ -217,25 +220,43 @@ class PostTest(APITestCase):
 
         # 로그인 하지 않았을 때
         self.client.logout()
-        second = User.objects.create(username="second", password="second")
+        second = User.objects.create_user(username="second", password="second")
         post = Post.objects.create(owner=second, content="test content")
         data = {"content": "update content", "image": image}
         res = self.client.put(reverse("post-detail", args=[post.pk]), data)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_delete_post(self):
-        # post owner can delete post
+        # 없는 개시물 업데이트
         self.client.force_login(self.basic_user)
-        post = Post.objects.create(owner=self.basic_user, content="test content")
+        data = {"content": "update content", "image": image}
+        res = self.client.put(reverse("post-detail", args=[100]), data)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_post(self):
+        # 개시물 삭제
+        self.client.force_login(self.basic_user)
+        post = Post.objects.create(owner=self.basic_user, content="delete content")
         res = self.client.delete(reverse("post-detail", args=[post.pk]))
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
-        # other user can't delete post
-        other_user = User.objects.create(username="other", password="other")
-        self.client.force_login(other_user)
-        post = Post.objects.create(owner=self.basic_user, content="test content")
+        # 다른 유저 개시물 삭제
+        self.client.force_login(self.basic_user)
+        first = User.objects.create_user(username="first", password="first")
+        post = Post.objects.create(owner=first, content="test content")
         res = self.client.delete(reverse("post-detail", args=[post.pk]))
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 로그인 하지 않았을 때
+        self.client.logout()
+        second = User.objects.create_user(username="second", password="second")
+        post = Post.objects.create(owner=second, content="test content")
+        res = self.client.delete(reverse("post-detail", args=[post.pk]))
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 없는 개시물 삭제
+        self.client.force_login(self.basic_user)
+        res = self.client.delete(reverse("post-detail", args=[100]))
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class FollowTest(APITestCase):
@@ -263,55 +284,62 @@ class FollowTest(APITestCase):
             for i in range(3):
                 post = Post.objects.create(owner=user, content=f"{user}_{i}")
 
+    def test_get_all_following(self):
+        # 팔로잉 유저 목록
+        self.client.force_login(self.basic_user)
+        res = self.client.get(reverse("following-list"))
+        data = res.data
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(data), len(self.following))
+        for user in data:
+            self.assertIn(user["pk"], [user.pk for user in self.following])
 
-#     def test_get_all_following(self):
-#         self.client.force_login(self.basic_user)
-#         res = self.client.get(reverse("follow-list"))
-#         self.assertEqual(res.status_code, status.HTTP_200_OK)
-#         data = json.loads(res.content)
-#         follow_list = Follow.objects.filter(user=self.basic_user).all()
-#         serializer = FollowSerializer(follow_list, many=True)
-#         self.assertEqual(data, serializer.data)
+        # 로그인 하지 않았을 때
+        self.client.logout()
+        res = self.client.get(reverse("following-list"))
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-#     def test_get_all_followers(self):
-#         self.client.force_login(self.basic_user)
-#         res = self.client.get(reverse("follow-follower"))
-#         self.assertEqual(res.status_code, status.HTTP_200_OK)
-#         data = json.loads(res.content)
-#         follower_list = Follow.objects.filter(follow=self.basic_user).all()
-#         serializer = FollowSerializer(follower_list, many=True)
-#         self.assertEqual(data, serializer.data)
+    def test_get_all_followers(self):
+        # 팔로우 유저 목록
+        self.client.force_login(self.basic_user)
+        res = self.client.get(reverse("follower-list"))
+        data = res.data
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(data), len(self.follower))
+        for user in data:
+            self.assertIn(user["pk"], [user.pk for user in self.follower])
 
-#     def test_follow(self):
-#         # 정상 요청
-#         self.client.force_login(self.basic_user)
-#         test_user = Follow.objects.exclude(user=self.basic_user).first().user
-#         res = self.client.post(reverse("follow-list"), {"follow": test_user.pk})
-#         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-#         data = json.loads(res.content)
-#         self.assertEqual(data["user"]["pk"], self.basic_user.pk)
-#         self.assertEqual(data["follow"]["pk"], test_user.pk)
+        # 로그인 하지 않았을 때
+        self.client.logout()
+        res = self.client.get(reverse("following-list"))
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-#         # 이미 팔로우
-#         self.client.force_login(self.basic_user)
-#         follow = Follow.objects.filter(user=self.basic_user).first().follow
-#         res = self.client.post(reverse("follow-list"), {"follow": follow.pk})
-#         self.assertEqual(res.status_code, status.HTTP_302_FOUND)
+    def test_follow(self):
+        # 새로운 팔로우 생성
+        self.client.force_login(self.basic_user)
+        first = User.objects.create_user(username="first", password="first")
+        res = self.client.post(reverse("follow"), {"user": first.pk})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
-#         # 본인과 팔로우
-#         self.client.force_login(self.basic_user)
-#         res = self.client.post(reverse("follow-list"), {"follow": self.basic_user.pk})
-#         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        # 기존 팔로우 제거
+        self.client.force_login(self.basic_user)
+        second = User.objects.create_user(username="second", password="second")
+        Follow.objects.create(follower=self.basic_user, following=second)
+        res = self.client.post(reverse("follow"), {"user": second.pk})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
 
-#     def test_unfollow(self):
-#         # 존재하는 팔로우 삭제
-#         self.client.force_login(self.basic_user)
-#         follow = Follow.objects.filter(user=self.basic_user).first().follow
-#         res = self.client.delete(reverse("follow-detail", args=[follow.pk]))
-#         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        # 로그인 하지 않았을 때
+        self.client.logout()
+        third = User.objects.create_user(username="third", password="third")
+        res = self.client.post(reverse("follow"), {"user": third.pk})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-#         # 존재하지 않는 팔로우 삭제
-#         self.client.force_login(self.basic_user)
-#         follow = Follow.objects.exclude(user=self.basic_user).first().follow
-#         res = self.client.delete(reverse("follow-detail", args=[follow.pk]))
-#         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        # 없는 유저 팔로우
+        self.client.force_login(self.basic_user)
+        res = self.client.post(reverse("follow"), {"user": 100})
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # 본인 팔로우
+        self.client.force_login(self.basic_user)
+        res = self.client.post(reverse("follow"), {"user": self.basic_user.pk})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

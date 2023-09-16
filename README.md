@@ -92,15 +92,10 @@
       description: 나를 팔로우한 유저 조회
       response: 유저 리스트
     
-    - path: /user/follow
+    - path: /user/follow/
       method: POST
-      description: 팔로우 생성
-      response: 204
-    
-    - path: /user/unfollow
-      method: POST
-      description: 언팔로우
-      response: 204
+      description: 팔로우 토글
+      response: 결과
   ```
 # TODO
 

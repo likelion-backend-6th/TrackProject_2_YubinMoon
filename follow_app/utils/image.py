@@ -1,14 +1,15 @@
-import os
-import boto3
 import uuid
 
+import boto3
+from django.conf import settings
 
-def upload(self, image) -> str:
+
+def upload(image) -> str:
     # connect to boto3
     service_name = "s3"
     endpoint_url = "https://kr.object.ncloudstorage.com"
-    access_key = os.getenv("NCP_ACCESS_KEY")
-    secret_key = os.getenv("NCP_SECRET_KEY")
+    access_key = settings.NCP_ACCESS_KEY
+    secret_key = settings.NCP_SECRET_KEY
     s3 = boto3.client(
         service_name,
         endpoint_url=endpoint_url,

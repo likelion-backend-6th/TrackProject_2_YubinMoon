@@ -12,6 +12,9 @@ user_patterns = [
 
 urlpatterns = [
     path("users/", views.UserListAPIView.as_view(), name="user-list"),
+    path("following/", views.FollowingAPIView.as_view(), name="following-list"),
+    path("follower/", views.FollowerAPIView.as_view(), name="follower-list"),
+    path("follow/", views.FollowAPIView.as_view(), name="follow"),
     path("user/", include(user_patterns)),
     path("", include(router.urls)),
 ]
