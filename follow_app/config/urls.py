@@ -25,9 +25,9 @@ from tweet.urls import urlpatterns as tweet_urlpatterns
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include(tweet_urlpatterns)),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
-        "api/docs/",
+        "",
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="redoc",
     ),
