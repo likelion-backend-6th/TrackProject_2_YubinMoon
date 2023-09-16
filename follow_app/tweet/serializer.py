@@ -70,3 +70,18 @@ class CreateFollowSerializer(serializers.ModelSerializer):
         model = Follow
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField(label="유저명", help_text="유저명을 입력해주세요.")
+    password = serializers.CharField(label="비밀번호", help_text="비밀번호를 입력해주세요.")
+
+
+class SignUpSerializer(serializers.Serializer):
+    username = serializers.CharField(label="유저명", help_text="유저명을 입력해주세요.")
+    password = serializers.CharField(label="비밀번호", help_text="비밀번호를 입력해주세요.")
+    email = serializers.CharField(label="이메일", help_text="이메일을 입력해주세요.")
+
+
+class CommonMessage(serializers.Serializer):
+    message = serializers.CharField(label="메시지", help_text="응답에 대한 메시지가 포함됩니다.")

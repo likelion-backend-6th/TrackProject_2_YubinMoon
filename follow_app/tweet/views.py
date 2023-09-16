@@ -1,8 +1,8 @@
-from rest_framework import serializers
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import mixins, status, viewsets, views
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiRequest
+from rest_framework import mixins, serializers, status, views, viewsets
 from rest_framework.response import Response
 
 from .models import Follow, Post
@@ -10,12 +10,87 @@ from .serializer import (
     CreatePostSerializer,
     PostSerializer,
     UserSerializer,
+    CommonMessage,
+    SignUpSerializer,
+    LoginSerializer,
 )
 
 
 class CommonAPIView(views.APIView):
     def get_serializer_context(self):
         return {"request": self.request, "view": self}
+
+
+@extend_schema(
+    tags=["User"],
+    summary="회원가입",
+    request=SignUpSerializer,
+    responses={201: CommonMessage("Successfully signed up")},
+)
+class UserSignupAPIView(CommonAPIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        email = request.data.get("email")
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"message": "Username already exists"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"message": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = User.objects.create_user(
+            username=username, password=password, email=email
+        )
+        user.save()
+        return Response(
+            {"message": "Successfully signed up"}, status=status.HTTP_201_CREATED
+        )
+
+
+@extend_schema(
+    tags=["User"],
+    summary="로그인",
+    request=LoginSerializer,
+    responses={200: CommonMessage("Successfully logged in")},
+)
+class UserLoginAPIView(CommonAPIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return Response(
+                {"message": "Successfully logged in"}, status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+
+@extend_schema(
+    tags=["User"],
+    summary="로그아웃",
+    responses={200: CommonMessage("Successfully logged out")},
+)
+class UserLogoutAPIView(CommonAPIView):
+    def get(self, request):
+        logout(request)
+        return Response(
+            {"message": "Successfully logged out"}, status=status.HTTP_200_OK
+        )
 
 
 @extend_schema(

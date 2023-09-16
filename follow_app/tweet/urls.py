@@ -8,6 +8,9 @@ router.register("", views.PostViewSet, basename="post")
 
 user_patterns = [
     path("posts/", views.UserPostsAPIView.as_view(), name="user-posts"),
+    path("signup/", views.UserSignupAPIView.as_view(), name="user-signup"),
+    path("login/", views.UserLoginAPIView.as_view(), name="user-login"),
+    path("logout/", views.UserLogoutAPIView.as_view(), name="user-logout"),
 ]
 
 urlpatterns = [
