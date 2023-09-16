@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Follow, Image, Post
-from utils import image
+from common import image
 
 
 class UserSerializer(serializers.ModelSerializer):
