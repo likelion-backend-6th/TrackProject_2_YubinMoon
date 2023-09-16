@@ -22,4 +22,4 @@ spec:
   volumes:
     - name: postgres-data
       persistentVolumeClaim:
-        claimName: db-pod-pvc
+        claimName: {{ include "tweet.db.fullname" . }}

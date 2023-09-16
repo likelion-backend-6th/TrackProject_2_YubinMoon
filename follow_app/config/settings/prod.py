@@ -8,9 +8,9 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 # 쿠버네티스로 넘어가면 괜찮겠지만
 DEBUG = True
 
-ALLOWED_HOSTS = [os.getenv("ALLOWED_HOST", "localhost")]
+ALLOWED_HOSTS += [os.getenv("ALLOWED_HOST", "localhost"), "limeskin.kr"]
 
-CSRF_TRUSTED_ORIGINS = [f"http://{os.getenv('ALLOWED_HOST', 'localhost')}"]
+CSRF_TRUSTED_ORIGINS += [f"http://{os.getenv('ALLOWED_HOST', 'http://limeskin.kr')}"]
 
 DATABASES = {
     "default": {
