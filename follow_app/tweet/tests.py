@@ -116,7 +116,7 @@ class PostTest(APITestCase):
         res = self.client.post(reverse("post-list"), {"content": "test content"})
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("utils.image.upload")
+    @patch("common.image.upload")
     def test_write_post(self, upload_image_mock: MagicMock):
         # 이미지 생성
         image = PImage.new("RGB", (100, 100))
@@ -182,7 +182,7 @@ class PostTest(APITestCase):
         res = self.client.put(reverse("post-detail", args=[100]), data)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch("utils.image.upload")
+    @patch("common.image.upload")
     def test_update_post_with_image(self, upload_image_mock: MagicMock):
         # 이미지 생성
         image = PImage.new("RGB", (100, 100))
