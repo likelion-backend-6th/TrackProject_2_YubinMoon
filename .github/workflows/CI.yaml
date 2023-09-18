@@ -1,21 +1,45 @@
-name: CI
+name: DRF Test
 
 on:
+  push:
   pull_request:
     types:
-      - closed
+      - opened
 
 env:
   IMAGE: ${{ vars.NCR_REGISTRY }}/follow-app
-  IMAGE_LATEST: ${{ vars.NCR_REGISTRY }}/follow-app:latest
 
 jobs:
-  lint-test:
-    name: lint and test
-    uses: ./.github/workflows/DRF-test.yaml
+  lint:
+    name: black check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: install black
+        run: pip install black
+      - name: check black
+        run: black --check .
+
+  drf-test:
+    needs: lint
+    name: test drf with docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set env file
+        run: echo -n "${{ secrets.TEST_ENV_FILE }}" | base64 -d > .env
+
+      - name: test
+        run: |
+          docker compose up --build -d
+          docker compose run follow-app python manage.py test
 
   send-discord-fail-message:
-    needs: lint-test
+    needs: drf-test
     if: failure()
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +65,7 @@ jobs:
             }
 
   build-and-push:
-    needs: lint-test
+    needs: drf-test
     name: build and push
     runs-on: ubuntu-latest
     steps:
@@ -50,89 +74,14 @@ jobs:
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to NCR
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ vars.NCR_REGISTRY }}
-          username: ${{ secrets.NCR_ACCESS_KEY }}
-          password: ${{ secrets.NCR_SECRET_KEY }}
-
-      - name: Get current timestamp
-        id: timestamp
-        run: echo "timestamp=$(date '+%s')" >> "$GITHUB_OUTPUT"
+      - name: get version
+        run: |
+          echo "APP_VERSION=$(python -c "from follow_app.config.settings.base import VERSION;print(VERSION)")" >> $GITHUB_ENV
 
       - name: Build and Push
-        uses: docker/build-push-action@v4
-        with:
-          context: follow_app
-          tags: ${{ env.IMAGE_LATEST }},"${{ env.IMAGE }}:${{ steps.timestamp.outputs.timestamp }}"
-          push: true
-
-  health-check:
-    needs: build-and-push
-    name: health check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Healthcheck Start
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          script: |
-            cd follow_app
-            docker login \
-            ${{ vars.NCR_REGISTRY }} \
-            -u ${{ secrets.NCR_ACCESS_KEY }} \
-            -p ${{ secrets.NCR_SECRET_KEY }}
-            docker pull ${{ env.IMAGE_LATEST }}
-
-  send-discord-fail-health:
-    needs: health-check
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Message to Discord
-        uses: "hugoalh/send-discord-webhook-ghaction@v5.0.0"
-        with:
-          key: ${{ secrets.DISCORD_WEBHOOK_KEY }}
-          payload: |
-            {
-              "content": "",
-              "embeds": [
-                {
-                  "title": "Health Check Failed",
-                  "description": "workflow failed at stage server health check.",
-                  "color": "#b42323",
-                  "footer": {
-                    "text": "${{ github.event_name }}"
-                  }
-                }
-              ],
-              "username": "Project Build Manager",
-              "avatar_url": "https://file.limeskin.kro.kr/curious_cat-small.png",
-            }
-
-  deploy:
-    needs: health-check
-    name: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: pull and run image
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          script: |
-            docker login \
-            ${{ vars.NCR_REGISTRY }} \
-            -u ${{ secrets.NCR_ACCESS_KEY }} \
-            -p ${{ secrets.NCR_SECRET_KEY }}
-            docker pull ${{ env.IMAGE_LATEST }}
-            docker stop follow-app
-            docker run -d --rm --name follow-app \
-              --env-file .env \
-              -p 8000:8000 \
-              ${{ env.IMAGE_LATEST }} \
-              /start
+        # if: ${{ !env.ACT }}
+        run: |
+          docker login -u ${{ secrets.NCR_ACCESS_KEY }} -p ${{ secrets.NCR_SECRET_KEY }} ${{ vars.NCR_REGISTRY }}
+          docker build ./follow_app -t ${{ env.IMAGE }}:$APP_VERSION -t ${{ env.IMAGE }}:latest
+          docker push ${{ env.IMAGE }}:$APP_VERSION
+          docker push ${{ env.IMAGE }}:latest
