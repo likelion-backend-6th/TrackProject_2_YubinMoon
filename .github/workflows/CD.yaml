@@ -20,7 +20,6 @@ jobs:
 
       - name: update image tag
         run: |
-          cd tweet-helm
           sed -i "s/appVersion:.*/appVersion: \"${{ github.event.release.tag_name }}\"/g" ./Chart.yaml
 
       - name: commit and push
