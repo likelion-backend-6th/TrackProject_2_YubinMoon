@@ -97,6 +97,18 @@ class PostTest(APITestCase):
         for id in user_list:
             self.assertIn(id, [user.pk for user in self.following])
 
+        # private 개시물 포함 여부
+        self.client.force_login(self.basic_user)
+        new_user = User.objects.create_user(username="new", password="new")
+        new_user_post = Post.objects.create(
+            owner=new_user, content="new content", private=True
+        )
+        Follow.objects.create(follower=self.basic_user, following=new_user)
+        res = self.client.get(reverse("post-list"))
+        data = res.data
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertNotIn(new_user_post.id, [post["id"] for post in data])
+
         # 로그인 하지 않았을 때
         self.client.logout()
         res = self.client.get(reverse("post-list"))
@@ -110,6 +122,17 @@ class PostTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(data["content"], "test content")
         self.assertEqual(data["owner"]["pk"], self.basic_user.pk)
+
+        # privaet 개시물 작성
+        self.client.force_login(self.basic_user)
+        res = self.client.post(
+            reverse("post-list"), {"content": "test content", "private": True}
+        )
+        data = res.data
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(data["content"], "test content")
+        self.assertEqual(data["owner"]["pk"], self.basic_user.pk)
+        self.assertEqual(data["private"], True)
 
         # 로그인 하지 않았을 때
         self.client.logout()

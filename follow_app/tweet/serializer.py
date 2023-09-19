@@ -40,7 +40,7 @@ class CreatePostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ["content", "image"]
+        fields = ["content", "image", "private"]
 
     def save(self, **kwargs):
         img = self.validated_data.get("image")
