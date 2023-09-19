@@ -166,7 +166,7 @@ class FollowerAPIView(CommonAPIView):
     request=inline_serializer(
         name="inline serializer", fields={"user": serializers.IntegerField()}
     ),
-    responses={200: None, 201: None},
+    responses={204: None},
 )
 class FollowAPIView(CommonAPIView):
     def post(self, request):
@@ -177,9 +177,9 @@ class FollowAPIView(CommonAPIView):
         follow = Follow.objects.filter(follower=user, following=follow_user).first()
         if follow:
             follow.delete()
-            return Response(status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         Follow.objects.create(follower=user, following=follow_user)
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=["Post"], description="개시물과 관련된 API")
