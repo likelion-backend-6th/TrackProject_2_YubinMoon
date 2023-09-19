@@ -26,8 +26,8 @@ class Command(BaseCommand):
             usera = User.objects.get(username=f"user{a}")
             userb = User.objects.get(username=f"user{b}")
             userc = User.objects.get(username=f"user{c}")
-            Follow.objects.create(user=user, follow=usera)
-            Follow.objects.create(user=user, follow=userb)
-            Follow.objects.create(user=user, follow=userc)
+            Follow.objects.create(follower=user, following=usera)
+            Follow.objects.create(follower=user, following=userb)
+            Follow.objects.create(follower=user, following=userc)
 
         print("데이터 생성 완료")

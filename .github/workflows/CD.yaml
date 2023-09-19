@@ -1,0 +1,29 @@
+name: CD
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  IMAGE: ${{ vars.NCR_REGISTRY }}/follow-app
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: update image tag
+        run: |
+          cd tweet-helm
+          sed -i "s/appVersion:.*/appVersion: \"${{ github.event.release.tag_name }}\"/g" ./Chart.yaml
+
+      - name: commit and push
+        run: |
+          git config --local user.email "munu220@naver.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -am "update chart tag"
+          git branch -a
+          git push origin develop

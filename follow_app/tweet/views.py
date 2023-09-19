@@ -1,8 +1,8 @@
-from rest_framework import serializers
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import mixins, status, viewsets, views
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiRequest
+from rest_framework import mixins, serializers, status, views, viewsets
 from rest_framework.response import Response
 
 from .models import Follow, Post
@@ -10,12 +10,93 @@ from .serializer import (
     CreatePostSerializer,
     PostSerializer,
     UserSerializer,
+    CommonMessage,
+    SignUpSerializer,
+    LoginSerializer,
 )
 
 
 class CommonAPIView(views.APIView):
     def get_serializer_context(self):
         return {"request": self.request, "view": self}
+
+
+class CurrentUserAPIView(CommonAPIView):
+    @extend_schema(
+        tags=["User"],
+        summary="현재 유저 조회",
+        description="현재 로그인한 유저의 정보를 조회",
+        responses={200: UserSerializer()},
+    )
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+@extend_schema(
+    tags=["User"],
+    summary="회원가입",
+    request=SignUpSerializer,
+    responses={201: CommonMessage("Successfully signed up")},
+)
+class UserSignupAPIView(CommonAPIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"message": "Username already exists"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.create_user(username=username, password=password)
+        user.save()
+        return Response(
+            {"message": "Successfully signed up"}, status=status.HTTP_201_CREATED
+        )
+
+
+@extend_schema(
+    tags=["User"],
+    summary="로그인",
+    request=LoginSerializer,
+    responses={200: CommonMessage("Successfully logged in")},
+)
+class UserLoginAPIView(CommonAPIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return Response(
+                {"message": "Successfully logged in"}, status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+
+@extend_schema(
+    tags=["User"],
+    summary="로그아웃",
+    responses={200: CommonMessage("Successfully logged out")},
+)
+class UserLogoutAPIView(CommonAPIView):
+    def get(self, request):
+        logout(request)
+        return Response(
+            {"message": "Successfully logged out"}, status=status.HTTP_200_OK
+        )
 
 
 @extend_schema(
@@ -85,7 +166,7 @@ class FollowerAPIView(CommonAPIView):
     request=inline_serializer(
         name="inline serializer", fields={"user": serializers.IntegerField()}
     ),
-    responses={200: None, 201: None},
+    responses={204: None},
 )
 class FollowAPIView(CommonAPIView):
     def post(self, request):
@@ -96,9 +177,9 @@ class FollowAPIView(CommonAPIView):
         follow = Follow.objects.filter(follower=user, following=follow_user).first()
         if follow:
             follow.delete()
-            return Response(status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         Follow.objects.create(follower=user, following=follow_user)
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=["Post"], description="개시물과 관련된 API")

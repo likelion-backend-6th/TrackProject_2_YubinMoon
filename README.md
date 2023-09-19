@@ -6,11 +6,14 @@
   - [CI/CD](#cicd)
   - [INFRA](#infra)
   - [BACKEND](#backend)
+  - [FRONTEND](#frontend)
 - [TODO](#todo)
   - [DRF](#drf)
   - [docker](#docker)
   - [terraform](#terraform)
+  - [kubernetes](#kubernetes)
   - [github actions](#github-actions)
+  - [frontend](#frontend-1)
 - [Quick Start](#quick-start)
   - [Local](#local)
   - [Prod](#prod)
@@ -27,18 +30,19 @@
 
 ## CI/CD
 
-- CI/CD는 github actions 사용
-- NCP CR, docker로 배포
-- main, develop 브랜치를 prod로 나머지를 staged로 배포
-- 배포 인스턴스에 ssh로 접속하여 배포
-- allowed hosts만 환경변수로 입력
+- CI는 github actions 사용
+- CD는 argocd 사용
+- NCP CR, docker image로 배포
+- develop repo에 helm Chart를 업데이트 하여 배포
+- allowed hosts를 전체 허용으로 변경
+- cros origin 허용
+- CSRF 토큰 비활성화
 
 ## INFRA
 
-- terraform으로 staged, prod 환경 따로 구성
+- terraform으로 k8s 환경 구성
 - terraform state는 s3 backend와 NCP Object Storage 사용
-- 생성된 인스턴스 ip, LB url등은 github actions secret에 업데이트 -> token으로 접근이 안돼 불가능
-- actions에서 새로운 이미지로 업데이트 가능하도록 구성
+- actions에서 새로운 이미지를 업로드 하도록 구성
 
 ## BACKEND
 
@@ -97,6 +101,15 @@
       description: 팔로우 토글
       response: 결과
   ```
+- global DNS로 도메인 연결 (api.limeskin.kr)
+
+## FRONTEND
+
+- React 사용
+- tailwindcss로 디자인
+- Object Storage에 업로드 해 정적 웹으로 배포
+- NCP global DNS로 도메인 연결
+
 # TODO
 
 대략적인 계획입니다.  
@@ -116,6 +129,8 @@
 - [x] VIEWSET 생성
 - [x] boto3 NCP 연결
 - [x] docs 페이지 생성
+- [x] API 개선
+- [ ] post 비활성화 기능 추가
 
 ## docker
 
@@ -131,6 +146,12 @@
 - [ ] github secret 모듈 생성 (실패)
 - [x] prod 환경 생성
 
+## kubernetes
+
+- [x] helm chart 작성
+- [x] k8s 작성
+- [ ] 모니터링 시스템구축
+
 ## github actions
 
 - [x] docker build
@@ -138,6 +159,18 @@
 - [x] docker push
 - [x] server update
 - [x] 실패시 discord 알림
+- [ ] 새롭게 CI/CD 작성
+
+## frontend
+
+- [x] react 프로젝트 생성
+- [x] tailwindcss 적용
+- [x] Login 페이지
+- [x] Signup 페이지
+- [x] MyPost 페이지
+- [x] Post 페이지
+- [x] UserList 페이지
+- [ ] post 비활성화 기능 추가
 
 # Quick Start
 

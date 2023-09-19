@@ -1,12 +1,6 @@
 import os
 from .base import *
 
-DJANGO_ALLOWED_HOST = os.getenv("DJANGO_ALLOWED_HOST", "localhost")
-
-ALLOWED_HOSTS = [DJANGO_ALLOWED_HOST]
-
-CSRF_TRUSTED_ORIGINS = [f"http://{DJANGO_ALLOWED_HOST}"]
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

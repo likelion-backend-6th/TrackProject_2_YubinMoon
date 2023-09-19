@@ -116,7 +116,7 @@ class PostTest(APITestCase):
         res = self.client.post(reverse("post-list"), {"content": "test content"})
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("utils.image.upload")
+    @patch("common.image.upload")
     def test_write_post(self, upload_image_mock: MagicMock):
         # 이미지 생성
         image = PImage.new("RGB", (100, 100))
@@ -182,7 +182,7 @@ class PostTest(APITestCase):
         res = self.client.put(reverse("post-detail", args=[100]), data)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch("utils.image.upload")
+    @patch("common.image.upload")
     def test_update_post_with_image(self, upload_image_mock: MagicMock):
         # 이미지 생성
         image = PImage.new("RGB", (100, 100))
@@ -319,14 +319,14 @@ class FollowTest(APITestCase):
         self.client.force_login(self.basic_user)
         first = User.objects.create_user(username="first", password="first")
         res = self.client.post(reverse("follow"), {"user": first.pk})
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
         # 기존 팔로우 제거
         self.client.force_login(self.basic_user)
         second = User.objects.create_user(username="second", password="second")
         Follow.objects.create(follower=self.basic_user, following=second)
         res = self.client.post(reverse("follow"), {"user": second.pk})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
         # 로그인 하지 않았을 때
         self.client.logout()

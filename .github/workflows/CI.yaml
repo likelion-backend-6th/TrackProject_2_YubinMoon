@@ -2,46 +2,17 @@ name: CI
 
 on:
   pull_request:
-    types:
-      - closed
+  push:
+    branches:
+      - "**"
+    tags:
+      - "*.*.*"
 
 env:
   IMAGE: ${{ vars.NCR_REGISTRY }}/follow-app
-  IMAGE_LATEST: ${{ vars.NCR_REGISTRY }}/follow-app:latest
 
 jobs:
-  lint-test:
-    name: lint and test
-    uses: ./.github/workflows/DRF-test.yaml
-
-  send-discord-fail-message:
-    needs: lint-test
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Message to Discord
-        uses: "hugoalh/send-discord-webhook-ghaction@v5.0.0"
-        with:
-          key: ${{ secrets.DISCORD_WEBHOOK_KEY }}
-          payload: |
-            {
-              "content": "",
-              "embeds": [
-                {
-                  "title": "Test Failed",
-                  "description": "workflow failed at DRF test stage.",
-                  "color": "#b42323",
-                  "footer": {
-                    "text": "${{ github.event_name }}"
-                  }
-                }
-              ],
-              "username": "Project Build Manager",
-              "avatar_url": "https://file.limeskin.kro.kr/curious_cat-small.png",
-            }
-
   build-and-push:
-    needs: lint-test
     name: build and push
     runs-on: ubuntu-latest
     steps:
@@ -61,78 +32,23 @@ jobs:
         id: timestamp
         run: echo "timestamp=$(date '+%s')" >> "$GITHUB_OUTPUT"
 
-      - name: Build and Push
+      - name: Get version
+        if: startsWith(github.ref, 'refs/tags')
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: build-and-push
+        if: startsWith(github.ref, 'refs/heads')
         uses: docker/build-push-action@v4
         with:
           context: follow_app
-          tags: ${{ env.IMAGE_LATEST }},"${{ env.IMAGE }}:${{ steps.timestamp.outputs.timestamp }}"
+          tags: "${{ env.IMAGE }}:${{ steps.timestamp.outputs.timestamp }}"
           push: true
 
-  health-check:
-    needs: build-and-push
-    name: health check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Healthcheck Start
-        uses: appleboy/ssh-action@v1.0.0
+      - name: build-and-push
+        if: startsWith(github.ref, 'refs/tags')
+        uses: docker/build-push-action@v4
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          script: |
-            cd follow_app
-            docker login \
-            ${{ vars.NCR_REGISTRY }} \
-            -u ${{ secrets.NCR_ACCESS_KEY }} \
-            -p ${{ secrets.NCR_SECRET_KEY }}
-            docker pull ${{ env.IMAGE_LATEST }}
-
-  send-discord-fail-health:
-    needs: health-check
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Message to Discord
-        uses: "hugoalh/send-discord-webhook-ghaction@v5.0.0"
-        with:
-          key: ${{ secrets.DISCORD_WEBHOOK_KEY }}
-          payload: |
-            {
-              "content": "",
-              "embeds": [
-                {
-                  "title": "Health Check Failed",
-                  "description": "workflow failed at stage server health check.",
-                  "color": "#b42323",
-                  "footer": {
-                    "text": "${{ github.event_name }}"
-                  }
-                }
-              ],
-              "username": "Project Build Manager",
-              "avatar_url": "https://file.limeskin.kro.kr/curious_cat-small.png",
-            }
-
-  deploy:
-    needs: health-check
-    name: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: pull and run image
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          script: |
-            docker login \
-            ${{ vars.NCR_REGISTRY }} \
-            -u ${{ secrets.NCR_ACCESS_KEY }} \
-            -p ${{ secrets.NCR_SECRET_KEY }}
-            docker pull ${{ env.IMAGE_LATEST }}
-            docker stop follow-app
-            docker run -d --rm --name follow-app \
-              --env-file .env \
-              -p 8000:8000 \
-              ${{ env.IMAGE_LATEST }} \
-              /start
+          context: follow_app
+          tags: "${{ env.IMAGE }}:${{ steps.version.outputs.VERSION }}"
+          push: true
