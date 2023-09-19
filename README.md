@@ -33,10 +33,8 @@
 - CI는 github actions 사용
 - CD는 argocd 사용
 - NCP CR, docker image로 배포
-- develop repo에 helm Chart를 업데이트 하여 배포
-- allowed hosts를 전체 허용으로 변경
-- cros origin 허용
-- CSRF 토큰 비활성화
+- repo에 TOKEN 권한이 없어 helm을 따로 관리
+- github actions에서 helm chart를 수정해 argocd로 배포
 
 ## INFRA
 
@@ -102,6 +100,9 @@
       response: 결과
   ```
 - global DNS로 도메인 연결 (api.limeskin.kr)
+- allowed hosts를 전체 허용으로 변경
+- cros origin 허용
+- CSRF 토큰 비활성화
 
 ## FRONTEND
 
