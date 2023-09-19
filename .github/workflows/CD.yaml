@@ -25,5 +25,8 @@ jobs:
           git config --local user.email "munu220@naver.com"
           git config --local user.name "github-actions[bot]"
           git commit -am "update chart tag"
-          git branch -a
-          git push origin develop
+
+      - name: push
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ github.head_ref }}
