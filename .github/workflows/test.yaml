@@ -1,0 +1,59 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: black check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: install black
+        run: pip install black
+      - name: check black
+        run: black --check .
+
+  drf-test:
+    name: test drf with docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set env file
+        run: echo -n "${{ secrets.TEST_ENV_FILE }}" | base64 -d > .env
+
+      - name: test
+        run: |
+          docker compose up --build -d
+          docker compose run follow-app python manage.py test
+
+  send-discord-fail-message:
+    needs: ["lint", "drf-test"]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Message to Discord
+        uses: "hugoalh/send-discord-webhook-ghaction@v5.0.0"
+        with:
+          key: ${{ secrets.DISCORD_WEBHOOK_KEY }}
+          payload: |
+            {
+              "content": "",
+              "embeds": [
+                {
+                  "title": "Test Failed",
+                  "description": "workflow failed at DRF test stage.",
+                  "color": "#b42323",
+                  "footer": {
+                    "text": "${{ github.event_name }}"
+                  }
+                }
+              ],
+              "username": "Project Build Manager",
+              "avatar_url": "https://file.limeskin.kro.kr/curious_cat-small.png",
+            }
