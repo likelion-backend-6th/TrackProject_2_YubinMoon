@@ -17,7 +17,6 @@ export default function Signup() {
 		data.password = data.password1;
 		backend("post", "/user/signup/", data)
 			.then((res) => {
-				console.log(res);
 				navigate("/login");
 			})
 			.catch((err) => {});

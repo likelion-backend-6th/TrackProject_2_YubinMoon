@@ -1,6 +1,5 @@
-const backend = async (operation, url, params) => {
+const backend = async (operation, url, params, content_type = "application/json") => {
 	let method = operation;
-	let content_type = "application/json";
 	let body = JSON.stringify(params);
 
 	let _url = process.env.REACT_APP_API_SERVER_URL + url;
@@ -10,16 +9,22 @@ const backend = async (operation, url, params) => {
 
 	let options = {
 		method: method,
-		headers: {
-			"Content-Type": content_type,
-		},
 		credentials: "include",
 	};
-
-	if (method !== "get" && method !== "delete") {
-		options["body"] = body;
+	console.log(options);
+	if (content_type) {
+		options["headers"] = {
+			"Content-Type": content_type,
+		};
+		if (method !== "get" && method !== "delete") {
+			options["body"] = body;
+		}
+	} else {
+		if (method !== "get" && method !== "delete") {
+			options["body"] = params;
+		}
 	}
-
+	console.log(options);
 	try {
 		const response = await fetch(_url, options);
 
