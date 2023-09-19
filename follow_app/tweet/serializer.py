@@ -80,7 +80,6 @@ class LoginSerializer(serializers.Serializer):
 class SignUpSerializer(serializers.Serializer):
     username = serializers.CharField(label="유저명", help_text="유저명을 입력해주세요.")
     password = serializers.CharField(label="비밀번호", help_text="비밀번호를 입력해주세요.")
-    email = serializers.CharField(label="이메일", help_text="이메일을 입력해주세요.")
 
 
 class CommonMessage(serializers.Serializer):

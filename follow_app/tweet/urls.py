@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register("", views.PostViewSet, basename="post")
 
 user_patterns = [
+    path("", views.CurrentUserAPIView.as_view(), name="user"),
     path("posts/", views.UserPostsAPIView.as_view(), name="user-posts"),
     path("signup/", views.UserSignupAPIView.as_view(), name="user-signup"),
     path("login/", views.UserLoginAPIView.as_view(), name="user-login"),
