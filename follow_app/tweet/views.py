@@ -21,6 +21,19 @@ class CommonAPIView(views.APIView):
         return {"request": self.request, "view": self}
 
 
+class CurrentUserAPIView(CommonAPIView):
+    @extend_schema(
+        tags=["User"],
+        summary="현재 유저 조회",
+        description="현재 로그인한 유저의 정보를 조회",
+        responses={200: UserSerializer()},
+    )
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
 @extend_schema(
     tags=["User"],
     summary="회원가입",
@@ -33,21 +46,14 @@ class UserSignupAPIView(CommonAPIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
-        email = request.data.get("email")
 
         if User.objects.filter(username=username).exists():
             return Response(
                 {"message": "Username already exists"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if User.objects.filter(email=email).exists():
-            return Response(
-                {"message": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST
-            )
 
-        user = User.objects.create_user(
-            username=username, password=password, email=email
-        )
+        user = User.objects.create_user(username=username, password=password)
         user.save()
         return Response(
             {"message": "Successfully signed up"}, status=status.HTTP_201_CREATED
