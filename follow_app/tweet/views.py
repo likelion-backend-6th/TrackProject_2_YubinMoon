@@ -206,6 +206,7 @@ class PostViewSet(
         user = request.user
         posts = (
             Post.objects.select_related("owner")
+            .filter(private=False)
             .prefetch_related("owner__follower")
             .filter(owner__follower__follower=user)
             .all()
