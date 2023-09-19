@@ -319,14 +319,14 @@ class FollowTest(APITestCase):
         self.client.force_login(self.basic_user)
         first = User.objects.create_user(username="first", password="first")
         res = self.client.post(reverse("follow"), {"user": first.pk})
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
         # 기존 팔로우 제거
         self.client.force_login(self.basic_user)
         second = User.objects.create_user(username="second", password="second")
         Follow.objects.create(follower=self.basic_user, following=second)
         res = self.client.post(reverse("follow"), {"user": second.pk})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
         # 로그인 하지 않았을 때
         self.client.logout()
