@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          repository: "YubinMoon/follow-chart"
+          token: ${{ secrets.CHART_TOKEN }}
 
       - name: update image tag
         run: |
@@ -29,5 +32,6 @@ jobs:
       - name: push
         uses: ad-m/github-push-action@master
         with:
-          branch: "develop"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          repository: "YubinMoon/follow-chart"
+          github_token: ${{ secrets.CHART_TOKEN }}
+          branch: master
