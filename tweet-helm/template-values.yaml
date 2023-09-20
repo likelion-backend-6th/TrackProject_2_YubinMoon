@@ -1,0 +1,40 @@
+image:
+  repository: limeskin.kr.ncr.ntruss.com/follow-app
+  pullPolicy: IfNotPresent
+  tag: ""
+
+replicaCount: 1
+containerPort: 8000
+
+imagePullSecrets:
+  - name: regcred
+
+fullnameOverride: ""
+nameOverride: ""
+
+dbImage: postgres:13
+
+dbService:
+  type: ClusterIP
+  port: 5432
+
+djangoService:
+  type: LoadBalancer
+  port: 80
+
+secret:
+  django:
+    DJANGO_SECRET_KEY: your-django-secret-key
+    NCP_ACCESS_KEY: your-ncp-access-key
+    NCP_SECRET_KEY: your-ncp-secret-key
+    RUN_MOD: "staging"
+  db:
+    POSTGRES_DB: postgres-db
+    POSTGRES_USER: postgres-user
+    POSTGRES_PASSWORD: postgres-password
+    POSTGRES_PORT: "5432"
+
+docker:
+  registry: your-docker-registery
+  username: your-docker-username
+  password: your-docker-password
